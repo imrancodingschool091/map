@@ -1,10 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 function DriverLocation() {
+  const [address, setAddress] = useState("");
 
   useEffect(() => {
-
-    // 1️⃣ Browser GPS support check
     if (!navigator.geolocation) {
       console.log("❌ GPS supported nahi hai");
       return;
@@ -13,22 +12,39 @@ function DriverLocation() {
     console.log("✅ GPS supported");
     console.log("📡 Location ka wait ho raha hai...");
 
-    // 2️⃣ Live location start
-    navigator.geolocation.watchPosition(
-      (position) => {
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
         console.clear();
+        const { latitude, longitude } = position.coords;
         console.log("🚚 DRIVER LOCATION");
-        console.log("Latitude :", position.coords.latitude);
-        console.log("Longitude:", position.coords.longitude);
+        console.log("Latitude :", latitude);
+        console.log("Longitude:", longitude);
+
+        // Reverse geocode
+        try {
+          const res = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyAx4J-pScIKpTGaCvzPPHFEyKSrGog2578`
+          );
+          const data = await res.json();
+
+          if (data.status === "OK") {
+            const formattedAddress = data.results[0]?.formatted_address;
+            console.log("📍 Address:", formattedAddress);
+            setAddress(formattedAddress);
+          } else {
+            console.log("❌ Address not found");
+          }
+        } catch (err) {
+          console.log("❌ Geocoding error:", err);
+        }
       },
       (error) => {
         console.log("❌ Error:", error.message);
       },
-      {
-        enableHighAccuracy: true
-      }
+      { enableHighAccuracy: true }
     );
 
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   return (
@@ -36,6 +52,7 @@ function DriverLocation() {
       <h2>Driver Location Page</h2>
       <p>Console open rakho (F12)</p>
       <p>Phone unlock rakho</p>
+      {address && <p>Current Location: {address}</p>}
     </div>
   );
 }
